@@ -10,7 +10,6 @@
 
 #include "secret_keys.h"
 
-
 WiFiServer server(80);
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -31,21 +30,41 @@ int  _dist;
 void setup() {
   Wire.begin();
   Serial.begin(9600);
-  Serial.println();
-  Serial.println();
-
-  servo_H.attach(12);
-  servo_H.write(90);
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
     Serial.println(F("SSD1306 allocation failed"));
     for(;;); // Don't proceed, loop forever
-  
   }
 
+  print2Display(" 5 ");
+  delay (1500);
+  print2Display(" 4 ");
+  delay (1500);
+  print2Display(" 3 ");
+  delay (1500);
+  print2Display(" 2 ");
+  delay (1500);
+  print2Display(" 1 ");
+  delay (1500);
+  print2Display(" Starting ");
+  Serial.println("Starting ESP");
+
+  Serial.println();
+  Serial.println();
+
+  Serial.println("Starting Wifi");
+  WiFi.begin(ssid,password);
+  Serial.println("Starting Server");
+  server.begin();
+  Serial.println(WiFi.localIP());   
+
+  servo_H.attach(12);
+  servo_H.write(90);
+
+  delay (1000);
+
   display.display();
-  delay(2000); // Pause for 2 seconds
   display.clearDisplay();
   display.setRotation(2);
 
@@ -81,13 +100,12 @@ void print2Display(String _text) {
   display.display();
 }
 
-
 int measureDistance() {
   int _dist = 0;
   _dist = sensor.readRangeSingleMillimeters();
-  Serial.print(_dist);
+  //Serial.print(_dist);
   if (sensor.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
-  Serial.println();
+  //Serial.println();
   return _dist;
 
 }
@@ -95,23 +113,40 @@ int measureDistance() {
 
 void loop() {
   int _measure_delay = 20;   // delay after measurement
-  int _stepsize = 2;         // Angle stepsize 
-  for (int _angle = 10 ; _angle <= 170 ; _angle = _angle + _stepsize)
+  int _stepsize = 5;         // Angle stepsize 
+  int minangle  = 10;
+  int maxangle  = 170;
+
+  for (int angle = minangle ; angle <= maxangle ; angle = angle + _stepsize)
   {
-    servo_H.write(_angle);
+    servo_H.write(angle);
     _dist = measureDistance();
     itoa (_dist , buffer , 10);
     print2Display(buffer);
     delay(_measure_delay);
-    distance[_angle] = _dist;
+    distance[angle] = _dist;
   }
-  for (int _angle = 170 ; _angle >= 10 ; _angle = _angle - _stepsize)
+  for (int angle = maxangle ; angle >= minangle ; angle = angle - _stepsize)
   {
-    servo_H.write(_angle);
+    servo_H.write(angle);
     _dist = measureDistance();
     itoa (_dist , buffer , 10);
     print2Display(buffer);
     delay(_measure_delay);
-    distance[_angle + 180] = _dist;
+    distance[angle + 180] = _dist;
   }
+  WiFiClient client = server.available();
+   while (client.connected() )
+    {
+        if (client.available() )
+            {
+              client.println("<!DOCTYPE HTML>");
+              client.println("<html>");
+              client.println("<body>");
+              client.println("<h1>Test Ausgabe</h1>");
+              client.println("</body>");
+              client.println("</html>");
+            }
+        client.stop();
+    }
 }
