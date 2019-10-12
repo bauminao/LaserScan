@@ -1,2 +1,3 @@
+secret_keys.h
 *.bin
 build

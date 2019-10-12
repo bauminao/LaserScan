@@ -4,6 +4,15 @@
 
 #include <VL53L0X.h>
 
+#include <Servo.h>
+
+#include <ESP8266WiFi.h>
+
+#include "secret_keys.h"
+
+
+WiFiServer server(80);
+
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
@@ -13,7 +22,9 @@
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 VL53L0X sensor;
+Servo servo_H;
 
+int  distance[360];
 char buffer[20];
 int  _dist;
 
@@ -23,10 +34,14 @@ void setup() {
   Serial.println();
   Serial.println();
 
+  servo_H.attach(12);
+  servo_H.write(90);
+
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x32
     Serial.println(F("SSD1306 allocation failed"));
     for(;;); // Don't proceed, loop forever
+  
   }
 
   display.display();
@@ -63,7 +78,6 @@ void print2Display(String _text) {
 
   display.print(_text);
 
-  display.setRotation(2);
   display.display();
 }
 
@@ -80,8 +94,24 @@ int measureDistance() {
 
 
 void loop() {
-  _dist = measureDistance();
-  itoa (_dist , buffer , 10);
-  print2Display(buffer);
-  delay(100);
+  int _measure_delay = 20;   // delay after measurement
+  int _stepsize = 2;         // Angle stepsize 
+  for (int _angle = 10 ; _angle <= 170 ; _angle = _angle + _stepsize)
+  {
+    servo_H.write(_angle);
+    _dist = measureDistance();
+    itoa (_dist , buffer , 10);
+    print2Display(buffer);
+    delay(_measure_delay);
+    distance[_angle] = _dist;
+  }
+  for (int _angle = 170 ; _angle >= 10 ; _angle = _angle - _stepsize)
+  {
+    servo_H.write(_angle);
+    _dist = measureDistance();
+    itoa (_dist , buffer , 10);
+    print2Display(buffer);
+    delay(_measure_delay);
+    distance[_angle + 180] = _dist;
+  }
 }
